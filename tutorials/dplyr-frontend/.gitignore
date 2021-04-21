@@ -1,2 +1,3 @@
 # /tutorials/dplyr-frontend/.gitignore
 *.pdf
+*.rds

@@ -27,9 +27,9 @@ minimized, especially toward the end of the tutorial, to reduce runtime.
     ## ── Attaching packages ─────────────────────────────────────── tidyverse 1.3.0 ──
 
     ## ✓ ggplot2 3.3.3     ✓ purrr   0.3.4
-    ## ✓ tibble  3.1.0     ✓ dplyr   1.0.4
-    ## ✓ tidyr   1.1.2     ✓ stringr 1.4.0
-    ## ✓ readr   1.4.0     ✓ forcats 0.5.0
+    ## ✓ tibble  3.1.0     ✓ dplyr   1.0.5
+    ## ✓ tidyr   1.1.3     ✓ stringr 1.4.0
+    ## ✓ readr   1.4.0     ✓ forcats 0.5.1
 
     ## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
     ## x dplyr::filter() masks stats::filter()
@@ -51,7 +51,8 @@ minimized, especially toward the end of the tutorial, to reduce runtime.
     # connect to the database
     mimic <- dbConnect(
       Postgres(),
-      dbname = "mimicdemo",
+      #dbname = "mimicdemo",
+      dbname = "mimic",
       host = "localhost",
       port = 5432,
       user = "mimicuser",
@@ -744,40 +745,41 @@ to be widened.
     #write_rds(analytic_wide, here::here("data", "analytic-wide.rds"))
     print(analytic_wide)
 
-    ## # A tibble: 10 x 79
+    ## # A tibble: 6,212 x 79
     ##    subject_id hadm_id admission_type admittime           dischtime          
     ##         <int>   <int> <chr>          <dttm>              <dttm>             
-    ##  1      10124  170883 EMERGENCY      2192-04-16 20:57:00 2192-05-15 19:28:00
-    ##  2      10065  183314 ELECTIVE       2189-09-08 07:15:00 2189-09-20 14:00:00
-    ##  3      10061  145203 EMERGENCY      2107-01-16 11:33:00 2107-02-10 11:30:00
-    ##  4      10027  199395 ELECTIVE       2190-07-13 07:15:00 2190-07-25 14:00:00
-    ##  5      10042  148562 EMERGENCY      2147-02-06 12:38:00 2147-02-17 19:00:00
-    ##  6      10017  199207 EMERGENCY      2149-05-26 17:19:00 2149-06-03 18:42:00
-    ##  7      10093  165393 EMERGENCY      2141-01-25 08:35:00 2141-01-26 03:05:00
-    ##  8      10046  133110 EMERGENCY      2194-07-26 23:43:00 2194-08-06 15:12:00
-    ##  9      10114  167957 URGENT         2171-10-30 19:03:00 2171-11-06 14:59:00
-    ## 10      10069  146672 EMERGENCY      2188-02-08 11:15:00 2188-02-27 18:41:00
-    ## # … with 74 more variables: hospital_expire_flag <int>, icustay_id <int>,
-    ## #   intime <dttm>, outtime <dttm>, icd9_code <chr>, gender <chr>, age <dbl>,
-    ## #   ethnicity <chr>, min_SPO2_p1 <dbl>, min_SPO2_p2 <dbl>, min_SPO2_p3 <dbl>,
-    ## #   min_SPO2_p4 <dbl>, min_heart rate_p1 <dbl>, min_heart rate_p2 <dbl>,
-    ## #   min_heart rate_p3 <dbl>, min_heart rate_p4 <dbl>, min_mean BP_p1 <dbl>,
-    ## #   min_mean BP_p2 <dbl>, min_mean BP_p3 <dbl>, min_mean BP_p4 <dbl>,
-    ## #   min_systolic BP_p1 <dbl>, min_systolic BP_p2 <dbl>,
-    ## #   min_systolic BP_p3 <dbl>, min_systolic BP_p4 <dbl>, min_temp f_p1 <dbl>,
-    ## #   min_temp f_p2 <dbl>, min_temp f_p3 <dbl>, min_temp f_p4 <dbl>,
-    ## #   max_SPO2_p1 <dbl>, max_SPO2_p2 <dbl>, max_SPO2_p3 <dbl>, max_SPO2_p4 <dbl>,
+    ##  1       6892  100031 ELECTIVE       2140-11-11 07:15:00 2140-11-24 11:40:00
+    ##  2      30078  100036 EMERGENCY      2187-07-13 13:58:00 2187-07-23 15:45:00
+    ##  3       9588  100041 ELECTIVE       2140-12-08 07:15:00 2140-12-12 13:26:00
+    ##  4       1569  100045 EMERGENCY      2176-02-05 18:40:00 2176-02-15 18:50:00
+    ##  5      29633  100050 ELECTIVE       2179-09-19 13:00:00 2179-09-25 13:30:00
+    ##  6      11279  100078 URGENT         2126-02-28 03:54:00 2126-03-05 13:40:00
+    ##  7       3365  100103 ELECTIVE       2179-12-13 07:15:00 2179-12-23 13:15:00
+    ##  8      24882  100109 EMERGENCY      2166-04-09 18:59:00 2166-04-18 13:58:00
+    ##  9      25418  100112 EMERGENCY      2139-02-17 15:30:00 2139-02-24 14:36:00
+    ## 10      14381  100136 EMERGENCY      2150-12-27 04:35:00 2150-12-31 17:35:00
+    ## # … with 6,202 more rows, and 74 more variables: hospital_expire_flag <int>,
+    ## #   icustay_id <int>, intime <dttm>, outtime <dttm>, icd9_code <chr>,
+    ## #   gender <chr>, age <dbl>, ethnicity <chr>, min_SPO2_p1 <dbl>,
+    ## #   min_SPO2_p2 <dbl>, min_SPO2_p3 <dbl>, min_SPO2_p4 <dbl>,
+    ## #   min_heart rate_p1 <dbl>, min_heart rate_p2 <dbl>, min_heart rate_p3 <dbl>,
+    ## #   min_heart rate_p4 <dbl>, min_mean BP_p1 <dbl>, min_mean BP_p2 <dbl>,
+    ## #   min_mean BP_p3 <dbl>, min_mean BP_p4 <dbl>, min_systolic BP_p1 <dbl>,
+    ## #   min_systolic BP_p2 <dbl>, min_systolic BP_p3 <dbl>,
+    ## #   min_systolic BP_p4 <dbl>, min_temp f_p1 <dbl>, min_temp f_p2 <dbl>,
+    ## #   min_temp f_p4 <dbl>, min_temp f_p3 <dbl>, max_SPO2_p1 <dbl>,
+    ## #   max_SPO2_p2 <dbl>, max_SPO2_p3 <dbl>, max_SPO2_p4 <dbl>,
     ## #   max_heart rate_p1 <dbl>, max_heart rate_p2 <dbl>, max_heart rate_p3 <dbl>,
     ## #   max_heart rate_p4 <dbl>, max_mean BP_p1 <dbl>, max_mean BP_p2 <dbl>,
     ## #   max_mean BP_p3 <dbl>, max_mean BP_p4 <dbl>, max_systolic BP_p1 <dbl>,
     ## #   max_systolic BP_p2 <dbl>, max_systolic BP_p3 <dbl>,
     ## #   max_systolic BP_p4 <dbl>, max_temp f_p1 <dbl>, max_temp f_p2 <dbl>,
-    ## #   max_temp f_p3 <dbl>, max_temp f_p4 <dbl>, min_HCO3 <dbl>, min_WBC <dbl>,
+    ## #   max_temp f_p4 <dbl>, max_temp f_p3 <dbl>, min_HCO3 <dbl>, min_WBC <dbl>,
     ## #   min_blood urea nitrogen <dbl>, min_creatinine <dbl>, min_glucose <dbl>,
     ## #   min_hematocrit <dbl>, min_potassium <dbl>, min_sodium <dbl>,
     ## #   max_HCO3 <dbl>, max_WBC <dbl>, max_blood urea nitrogen <dbl>,
     ## #   max_creatinine <dbl>, max_glucose <dbl>, max_hematocrit <dbl>,
-    ## #   max_potassium <dbl>, max_sodium <dbl>, urine foley_p1 <dbl>,
-    ## #   urine foley_p2 <dbl>, urine foley_p3 <dbl>, urine foley_p4 <dbl>,
+    ## #   max_potassium <dbl>, max_sodium <dbl>, urine foley_p2 <dbl>,
+    ## #   urine foley_p3 <dbl>, urine foley_p4 <dbl>, urine foley_p1 <dbl>,
     ## #   min_GCS <dbl>, mech_vent <int>, vaso <int>, add_mort30d <int>,
     ## #   disch_mort30d <int>, readm_30d <int>

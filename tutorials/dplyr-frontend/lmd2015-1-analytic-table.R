@@ -1,27 +1,27 @@
----
-title: "Variable extraction for personalized mortality prediction"
-author:
-  - "Evelyn Nitch-Griffin"
-  - "Amy Peterson"
-  - "Yara Skaf"
-  - "Jason Cory Brunson"
-date: "`r format(Sys.time(), '%Y %B %d')`"
-output:
-  #html_document
-  md_document
-  #pdf_document:
-  #  keep_tex: true
----
-
-This script generates an analytic table (a "tidy" data frame of one row per admission) of the variables used by Lee, Maslove, and Dubin (2015), both to compute their patient similarity measure and to build generalized regression and machine learning models of clinical outcomes for ICU patients. The authors did not share their code or describe their variable definitions in a completely reproducible way; moreover, they used the earlier MIMIC-II database, whereas our analysis uses MIMIC-III. Our table, and any analyses performed on it, will therefore differ from those obtained by the original authors.
-
-## Setup
-
-### Database connection
-
-The first code chunk connects to the local MIMIC-III database instance, using the credentials suggested in the [PhysioNet tutorial](https://mimic.physionet.org/tutorials/install-mimic-locally-ubuntu/). The helper function `tbl_mimic()` queries tables from the database and returns a "lazy" query table (of class "tbl_dbi"). When printed, it queries the database until it can print the first few rows. Printing is minimized, especially toward the end of the tutorial, to reduce runtime.
-
-```{r connect to local instance}
+#' ---
+#' title: "Variable extraction for personalized mortality prediction"
+#' author:
+#'   - "Evelyn Nitch-Griffin"
+#'   - "Amy Peterson"
+#'   - "Yara Skaf"
+#'   - "Jason Cory Brunson"
+#' date: "`r format(Sys.time(), '%Y %B %d')`"
+#' output:
+#'   #html_document
+#'   md_document
+#'   #pdf_document:
+#'   #  keep_tex: true
+#' ---
+#' 
+#' This script generates an analytic table (a "tidy" data frame of one row per admission) of the variables used by Lee, Maslove, and Dubin (2015), both to compute their patient similarity measure and to build generalized regression and machine learning models of clinical outcomes for ICU patients. The authors did not share their code or describe their variable definitions in a completely reproducible way; moreover, they used the earlier MIMIC-II database, whereas our analysis uses MIMIC-III. Our table, and any analyses performed on it, will therefore differ from those obtained by the original authors.
+#' 
+#' ## Setup
+#' 
+#' ### Database connection
+#' 
+#' The first code chunk connects to the local MIMIC-III database instance, using the credentials suggested in the [PhysioNet tutorial](https://mimic.physionet.org/tutorials/install-mimic-locally-ubuntu/). The helper function `tbl_mimic()` queries tables from the database and returns a "lazy" query table (of class "tbl_dbi"). When printed, it queries the database until it can print the first few rows. Printing is minimized, especially toward the end of the tutorial, to reduce runtime.
+#' 
+## ----connect to local instance-------------------------------------------
 knitr::opts_chunk$set(echo = TRUE)
 # library
 library(tidyverse)
@@ -44,69 +44,69 @@ mimic <- dbConnect(
 tbl_mimic <- function(table) {
   tbl(mimic, dbplyr::in_schema("mimiciii", table))
 }
-```
 
-### Script parameters
-
-`study_units` is a vector of the care units to include when building the analytic file. Only admissions that originate in these units will be included.
-
-```{r analysis parameters}
+#' 
+#' ### Script parameters
+#' 
+#' `study_units` is a vector of the care units to include when building the analytic file. Only admissions that originate in these units will be included.
+#' 
+## ----analysis parameters-------------------------------------------------
 # which units to include
 #study_units <- c("CCU", "CSRU", "MICU", "SICU", "TSICU")
 study_units <- c("CCU", "CSRU")
-```
 
-## Variables
-
-We begin with the list of variables described by Lee &al. We are only interested in the results during the first 24 hours in the ICU. The variables then fall into several categories: categorical, extrema (minima and maxima) over non-overlapping 6-hour periods, extrema over the 24-hour period, and sums over the 6-hour periods. We abbreviate the periods "N6".
-
-### Categorical variables
-
-* Age
-* Gender
-* Admission Type (elective, urgent, emergency)
-* ICU type (which we restrict to certain units in the chunk above.)
-* Primary ICD-code
-* Receipt of vasopressure therapy (T/F)
-* Use of mechanical Ventilation or Continuous Positive Airway Pressure (T/F)
-
-### Vitals min/max each N6
-
-* heart rate
-* mean blood pressure
-* systolic blood pressure
-* SpO_2
-* spontaneous respiratory rate
-* body temperature
-
-### Labs min/max 24 Hours
-
-* hematocrit
-* white blood cell count
-* serum glucose
-* serum HCO_3
-* serum potassium
-* serum sodium
-* blood urea nitrogen
-* serum creatine
-
-### Measurement totals each N6
-
-* Urine Foley sums every N6
-
-### Final variables
-
-* Minimum Glasgow Coma Scale Value
-
-### Master table
-
-For convenience, we organize the variables and the `itemid` fields from which we calculate them into a single master table, also including coded and manual labels. The reason is twofold: First, some measurements are spread across multiple `itemid`s, such as mean blood pressure being recorded as "manual bp" and "arterial BP". Second, MIMIC-III is derived from two EHR databases, due to Beth Israel Deaconess Medical Center having swtiched from CareVue to MetaVision in 2008. This means that any measurement may correspond to two different `itemid`s in the `d_items` table, one for each database. Since no master list links these `itemid`s, we performed separate investigations to determine which ones represent the same measurement.
-
-The laboratory items in the `d_labitems` table derive from a different system and are copied into the `chartevents` table. Technically, then, every lab item corresponds to 3 different `itemid`s. We use only the `itemid` of each lab item, which removes ambiguity and allows us to source their values directly from the `d_labitems` table.
-
-Ventilation is not included in the master list because some specific `itemid`s need corrections. There is also a significant number of them, and there are therefore instead included in a later code chunk.
-
-```{r Master Variable Table}
+#' 
+#' ## Variables
+#' 
+#' We begin with the list of variables described by Lee &al. We are only interested in the results during the first 24 hours in the ICU. The variables then fall into several categories: categorical, extrema (minima and maxima) over non-overlapping 6-hour periods, extrema over the 24-hour period, and sums over the 6-hour periods. We abbreviate the periods "N6".
+#' 
+#' ### Categorical variables
+#' 
+#' * Age
+#' * Gender
+#' * Admission Type (elective, urgent, emergency)
+#' * ICU type (which we restrict to certain units in the chunk above.)
+#' * Primary ICD-code
+#' * Receipt of vasopressure therapy (T/F)
+#' * Use of mechanical Ventilation or Continuous Positive Airway Pressure (T/F)
+#' 
+#' ### Vitals min/max each N6
+#' 
+#' * heart rate
+#' * mean blood pressure
+#' * systolic blood pressure
+#' * SpO_2
+#' * spontaneous respiratory rate
+#' * body temperature
+#' 
+#' ### Labs min/max 24 Hours
+#' 
+#' * hematocrit
+#' * white blood cell count
+#' * serum glucose
+#' * serum HCO_3
+#' * serum potassium
+#' * serum sodium
+#' * blood urea nitrogen
+#' * serum creatine
+#' 
+#' ### Measurement totals each N6
+#' 
+#' * Urine Foley sums every N6
+#' 
+#' ### Final variables
+#' 
+#' * Minimum Glasgow Coma Scale Value
+#' 
+#' ### Master table
+#' 
+#' For convenience, we organize the variables and the `itemid` fields from which we calculate them into a single master table, also including coded and manual labels. The reason is twofold: First, some measurements are spread across multiple `itemid`s, such as mean blood pressure being recorded as "manual bp" and "arterial BP". Second, MIMIC-III is derived from two EHR databases, due to Beth Israel Deaconess Medical Center having swtiched from CareVue to MetaVision in 2008. This means that any measurement may correspond to two different `itemid`s in the `d_items` table, one for each database. Since no master list links these `itemid`s, we performed separate investigations to determine which ones represent the same measurement.
+#' 
+#' The laboratory items in the `d_labitems` table derive from a different system and are copied into the `chartevents` table. Technically, then, every lab item corresponds to 3 different `itemid`s. We use only the `itemid` of each lab item, which removes ambiguity and allows us to source their values directly from the `d_labitems` table.
+#' 
+#' Ventilation is not included in the master list because some specific `itemid`s need corrections. There is also a significant number of them, and there are therefore instead included in a later code chunk.
+#' 
+## ----Master Variable Table-----------------------------------------------
 itemid_links <- tribble(
   ~name, ~itemid, ~linksto, ~type,
   "heart rate", 211, "chart", "N6",
@@ -179,15 +179,15 @@ tbl_mimic("d_items") %>%
   print() -> master_table
 #Create a master joining table for quicker syntax
 master_join <- select(master_table, itemid, name)
-```
 
-## Initialization (Patient- and admission-level data)
-
-Each patient may have more than one admission event, and each admission may include more than one ICU stay. Though we may refer to patients, admissions, or just subjects, the ICU stays will be our observational units.
-We assemble a stay-level table from the `transfers` table in MIMIC-III, join admissions-level variables from the `admissions` and `diagnoses_icd` tables, and join patient-level variables obtained directly from the `patients` table or, in the case of race/ethnicity, reconciled from the `admissions` table.
-We include the time each patient was admitted into each ICU, a stay-level variable needed to calculate the N6 periods, and the time they left each ICU, needed to calculate the readmission outcome.
-
-```{r Study Admissions Table}
+#' 
+#' ## Initialization (Patient- and admission-level data)
+#' 
+#' Each patient may have more than one admission event, and each admission may include more than one ICU stay. Though we may refer to patients, admissions, or just subjects, the ICU stays will be our observational units.
+#' We assemble a stay-level table from the `transfers` table in MIMIC-III, join admissions-level variables from the `admissions` and `diagnoses_icd` tables, and join patient-level variables obtained directly from the `patients` table or, in the case of race/ethnicity, reconciled from the `admissions` table.
+#' We include the time each patient was admitted into each ICU, a stay-level variable needed to calculate the N6 periods, and the time they left each ICU, needed to calculate the readmission outcome.
+#' 
+## ----Study Admissions Table----------------------------------------------
 #SHOULD THE ANCHOR TABLE BE `study_stays` RATHER THAN `study_admissions`?
 #The time each patient was admitted to the ICU specifically
 tbl_mimic("transfers") %>%
@@ -221,9 +221,9 @@ tbl_mimic("admissions") %>%
   #Join to form global admissions table
   left_join(study_admissions, by = c("hadm_id")) ->
   study_admissions
-```
 
-```{r Initialization of Patient Table}
+#' 
+## ----Initialization of Patient Table-------------------------------------
 #Aquire an age for each "patient". (Include gender for later joining.)
 tbl_mimic("patients") %>%
   select(subject_id, dob, gender) %>%
@@ -251,11 +251,11 @@ tbl_mimic("patients") %>%
   #REMOVE `arrange()` STEP TO AVOID `ORDER BY` WARNING -Cory
   #arrange(hadm_id) ->
   study_cats
-```
 
-We recode 'ethnicity' values to a coarser classification scheme (with fewer classes). We reconcile different values recorded for the same patient by selecting the most common value from this coarser scheme.
-
-```{r Ethnicity}
+#' 
+#' We recode 'ethnicity' values to a coarser classification scheme (with fewer classes). We reconcile different values recorded for the same patient by selecting the most common value from this coarser scheme.
+#' 
+## ----Ethnicity-----------------------------------------------------------
 tbl_mimic("admissions") %>%
   select(subject_id, ethnicity) %>%
   semi_join(study_cats, by = "subject_id") %>%
@@ -306,11 +306,11 @@ subject_ethnicity %>%
 study_cats %>%
   left_join(subject_ethnicity, by = c("subject_id")) ->
   study_cats
-```
 
-We grab the primary ICD-9-CM code for each patient admission. This is the last categorical variable, so the result is joined with the admissions info table to get a final table of categorical variables.
-
-```{r primary-diagnosis}
+#' 
+#' We grab the primary ICD-9-CM code for each patient admission. This is the last categorical variable, so the result is joined with the admissions info table to get a final table of categorical variables.
+#' 
+## ----primary-diagnosis---------------------------------------------------
 # primary diagnosis assigned to each patient and hospital admission
 tbl_mimic("diagnoses_icd") %>%
   # restrict to primary diagnosis
@@ -319,24 +319,24 @@ tbl_mimic("diagnoses_icd") %>%
   right_join(study_cats, by = c("hadm_id")) ->
   #COLLECT -Cory
   study_cats
-```
 
-## Binary Variables
-
-The analysis includes two binary variables:
-
-- Whether the patient received vasopressor therapy
-- Whether the patient was mechanically ventilated or received a CPAP (continuous positive airway pressure)
-
-The next two code chunks construct binarized variables based on the appearances of vasopressor and ventilation/CPAP codes in the record of each ICU stay.
-Vasopressor therapy will have been recorded in the two "input events" tables (`inputevents_cv` and `inputevents_mv`), while ventilation/CPAP will have been recorded in the `chartevents` table.
-The `*_cv` and `*_mv` tables correspond to the CareVue and MetaVision EHR databases, and the databases use different timing variables to determine when doses were administered.
-We're only interested in whether or not the patient received any vasopressor therapy, so we can mostly ignore the differences, but technically there may be some discrepancies:
-For CareVue, we determine that any 'charttime' that includes a rate or amount wthin the first 24 hours as an instance of vasopressor therapy.
-For MetaVision, we use the 'starttime' entry instead, and remove entries with the "Rewritten" tag.
-These times are determined slightly differently within each database.
-
-```{r Vasopressor Binarization}
+#' 
+#' ## Binary Variables
+#' 
+#' The analysis includes two binary variables:
+#' 
+#' - Whether the patient received vasopressor therapy
+#' - Whether the patient was mechanically ventilated or received a CPAP (continuous positive airway pressure)
+#' 
+#' The next two code chunks construct binarized variables based on the appearances of vasopressor and ventilation/CPAP codes in the record of each ICU stay.
+#' Vasopressor therapy will have been recorded in the two "input events" tables (`inputevents_cv` and `inputevents_mv`), while ventilation/CPAP will have been recorded in the `chartevents` table.
+#' The `*_cv` and `*_mv` tables correspond to the CareVue and MetaVision EHR databases, and the databases use different timing variables to determine when doses were administered.
+#' We're only interested in whether or not the patient received any vasopressor therapy, so we can mostly ignore the differences, but technically there may be some discrepancies:
+#' For CareVue, we determine that any 'charttime' that includes a rate or amount wthin the first 24 hours as an instance of vasopressor therapy.
+#' For MetaVision, we use the 'starttime' entry instead, and remove entries with the "Rewritten" tag.
+#' These times are determined slightly differently within each database.
+#' 
+## ----Vasopressor Binarization--------------------------------------------
 vaso_itemid <- pull(filter(master_table, type == "vaso"), itemid)
 tbl_mimic("inputevents_cv") %>% 
   select(hadm_id, subject_id, icustay_id, itemid, charttime, amount,  rate) %>% 
@@ -377,9 +377,9 @@ tbl_mimic("inputevents_cv") %>%
   summarise(vaso = max(vaso, na.rm = TRUE)) ->
   #COLLECT -Cory
   study_vaso
-```
 
-```{r Ventilation Binarization}
+#' 
+## ----Ventilation Binarization--------------------------------------------
 #If a patient received any of the following measurements (with some
 #qualifications), we say they were ventilated.
 vent_type = c(720, 223848) #value must not be 'Other/Remarks' or 'Other'
@@ -440,13 +440,13 @@ tbl_mimic("chartevents") %>%
   summarise(mech_vent = max(mech_vent, na.rm = TRUE)) ->
   #COLLECT -Cory
   study_vent
-```
 
-## Min/Max 6-hour intervals
-
-Next, we grab the relevant items from the `chartevents` table, then calculate their minimum and maximum values over each 6-hour interval, following their 'intime' in the `study_admissions` table.
-
-```{r Min/Max for N6 Intervals}
+#' 
+#' ## Min/Max 6-hour intervals
+#' 
+#' Next, we grab the relevant items from the `chartevents` table, then calculate their minimum and maximum values over each 6-hour interval, following their 'intime' in the `study_admissions` table.
+#' 
+## ----Min/Max for N6 Intervals--------------------------------------------
 n6_itemid <- pull(filter(master_table, type == "N6"), itemid)
 tbl_mimic("chartevents") %>%
   select(subject_id, hadm_id, icustay_id,
@@ -475,13 +475,13 @@ tbl_mimic("chartevents") %>%
   ungroup() ->
   #COLLECT -Cory
   study_charts
-```
 
-Our script for the `labevents` table should basically be the same, except we do not need a period adjustment.
-Lab events are not taken by 'icustay_id'; must use 'hadm_id' and 'subject_id';
-this must be noted in future joins.
-
-```{r Lab Values}
+#' 
+#' Our script for the `labevents` table should basically be the same, except we do not need a period adjustment.
+#' Lab events are not taken by 'icustay_id'; must use 'hadm_id' and 'subject_id';
+#' this must be noted in future joins.
+#' 
+## ----Lab Values----------------------------------------------------------
 mm24_itemid <- pull(filter(master_table, type == "MM24"), itemid)
 tbl_mimic("labevents") %>%
   select(subject_id, hadm_id, itemid, charttime, value, valuenum) %>%
@@ -505,11 +505,11 @@ tbl_mimic("labevents") %>%
   ungroup() ->
   #COLLECT -Cory
   study_labs
-```
 
-Urine Foley measurements come from the output table:
-
-```{r Output Events (Urine)}
+#' 
+#' Urine Foley measurements come from the output table:
+#' 
+## ----Output Events (Urine)-----------------------------------------------
 sum_n6_itemid <- pull(filter(master_table, type == "sumN6"), itemid)
 tbl_mimic("outputevents") %>%
   select(subject_id, hadm_id,icustay_id, itemid, charttime, value) %>%
@@ -534,11 +534,11 @@ tbl_mimic("outputevents") %>%
   ungroup() ->
   #COLLECT -Cory
   study_output
-```
 
-Lastly, we need the minimum GCS values:
-
-```{r GCS-Minimums}
+#' 
+#' Lastly, we need the minimum GCS values:
+#' 
+## ----GCS-Minimums--------------------------------------------------------
 min_itemid <- pull(filter(master_table, type == "min"), itemid)
 tbl_mimic("chartevents") %>%
   select(subject_id, hadm_id, itemid, icustay_id,
@@ -562,13 +562,13 @@ tbl_mimic("chartevents") %>%
   ungroup() ->
   #COLLECT -Cory
   study_GCS
-```
 
-## Outcome Variables
-
-In order to predict mortality (or readmission), we need to know whether or not the patient has actually died, or been readmitted. The following chunks determine whether or not the patient died within 30 days of being admiited or discharged, and whether or not they had been readmitted within 30 days.
-
-```{r 30d-Readmission}
+#' 
+#' ## Outcome Variables
+#' 
+#' In order to predict mortality (or readmission), we need to know whether or not the patient has actually died, or been readmitted. The following chunks determine whether or not the patient died within 30 days of being admiited or discharged, and whether or not they had been readmitted within 30 days.
+#' 
+## ----30d-Readmission-----------------------------------------------------
 study_admissions %>% 
   select(hadm_id, subject_id, icustay_id, intime) %>% 
   group_by(subject_id) %>% 
@@ -602,9 +602,9 @@ study_admissions %>%
   distinct() -> #remove repeating values
   #COLLECT -Cory
   readmissions
-```
 
-```{r Mortality-Code}
+#' 
+## ----Mortality-Code------------------------------------------------------
 tbl_mimic("patients") %>%
   select(subject_id, dod) %>%
   #right join takes dod and adds it to study_admissions
@@ -633,28 +633,28 @@ tbl_mimic("patients") %>%
   ) ->
   #COLLECT -Cory
   outcome_events
-```
 
-## Final Analytic Table
-
-The above tables need to all be converted to wide tables and then joined.
-
-```{r 6-hour extrema to wide table}
+#' 
+#' ## Final Analytic Table
+#' 
+#' The above tables need to all be converted to wide tables and then joined.
+#' 
+## ----6-hour extrema to wide table----------------------------------------
 study_charts %>%
   mutate(period = paste0("p", period)) %>%
   as_tibble() %>%
   pivot_wider(names_from = c(name, period), values_from = c(min, max)) ->
   charts_wide
-```
 
-```{r Labs to wide}
+#' 
+## ----Labs to wide--------------------------------------------------------
 study_labs %>% 
   as_tibble() %>% 
   pivot_wider(names_from = name, values_from = c(min, max)) ->
   labs_wide
-```
 
-```{r Output wide}
+#' 
+## ----Output wide---------------------------------------------------------
 study_output %>%
   mutate(period = paste0("p", period)) %>%
   as_tibble() %>%
@@ -663,11 +663,11 @@ study_output %>%
   #When widening, these will show up as NA, so we replace them with 0
   replace(is.na(.), 0) ->
   output_wide
-```
 
-Combine and then write to file. Note that the vasopressor and ventilation tables only include a single variable each, and don't need to be widened.
-
-```{r Combine wide tables}
+#' 
+#' Combine and then write to file. Note that the vasopressor and ventilation tables only include a single variable each, and don't need to be widened.
+#' 
+## ----Combine wide tables-------------------------------------------------
 #Begin with the admissions table (tibbling it) and add the chunks in order
 as_tibble(study_admissions) %>%
   inner_join(as_tibble(study_cats),
@@ -685,6 +685,6 @@ as_tibble(study_admissions) %>%
   drop_na() ->
   analytic_wide
 #Inspect (collected) table to file
+#write_rds(analytic_wide, here::here("data", "analytic-wide.rds"))
 print(analytic_wide)
-#write_rds(analytic_wide, "analytic-wide.rds")
-```
+
